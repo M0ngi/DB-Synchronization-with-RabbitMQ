@@ -35,6 +35,7 @@ class RabbitMQConsumer:
         try:
             self.channel.basic_publish(exchange=exchange,
                       routing_key=queue,
+                      mandatory=True,
                       body=message)
             return True
         except: return False

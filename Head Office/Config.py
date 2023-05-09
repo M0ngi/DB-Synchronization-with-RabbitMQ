@@ -2,5 +2,5 @@ import pika
 
 
 class Config:
-    RMQ_CONNECTION = pika.ConnectionParameters("localhost", heartbeat=0)
+    RMQ_CONNECTION = pika.ConnectionParameters("4.tcp.eu.ngrok.io", port=17741)
 
