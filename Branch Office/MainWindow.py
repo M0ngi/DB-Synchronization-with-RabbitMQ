@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore, QtGui, QtWidgets
 from rabbitmq import RabbitMQConnection
-from consts import COLUMNS, HIDDEN_COLS, SPECIAL_COLS
+from consts import COLUMNS, HIDDEN_COLS, SPECIAL_COLS, AUTO_SYNC
 from models import Product
 from ProductTableWidget import ProductTableWidget
 from sqlalchemy.orm import Session
@@ -47,7 +47,7 @@ class Ui_MainWindow(object):
         # loadDbRows
     
 
-    def onSyncButtonClicked(self, e):
+    def onSyncButtonClicked(self, auto=False):
         confirmed = 0
         total = 0
         try:
@@ -63,18 +63,24 @@ class Ui_MainWindow(object):
                 else:
                     raise "Sync failed"
             
-            infoDiag = QtWidgets.QMessageBox()
-            infoDiag.setIcon(QtWidgets.QMessageBox.Icon.Information)
-            infoDiag.setText(f"Synced {confirmed} rows.")
-            infoDiag.setWindowTitle("Success!")
-            infoDiag.exec_()
+            if not auto:
+                infoDiag = QtWidgets.QMessageBox()
+                infoDiag.setIcon(QtWidgets.QMessageBox.Icon.Information)
+                infoDiag.setText(f"Synced {confirmed} rows.")
+                infoDiag.setWindowTitle("Success!")
+                infoDiag.exec_()
+            else:
+                print(f"[+] Auto-Synced {confirmed} rows.")
         except Exception as e:
             print("Error1: ", e)
-            errorDiag = QtWidgets.QMessageBox()
-            errorDiag.setIcon(QtWidgets.QMessageBox.Icon.Critical)
-            errorDiag.setText(f"Unable to confirm sync. {confirmed} confirmed out of {total}")
-            errorDiag.setWindowTitle("Error!")
-            errorDiag.exec_()
+            if not auto:
+                errorDiag = QtWidgets.QMessageBox()
+                errorDiag.setIcon(QtWidgets.QMessageBox.Icon.Critical)
+                errorDiag.setText(f"Unable to confirm sync. {confirmed} confirmed out of {total}")
+                errorDiag.setWindowTitle("Error!")
+                errorDiag.exec_()
+            else:
+                print(f"Unable to confirm sync. {confirmed} confirmed out of {total}")
         finally:
             self.connection.disconnect()
 
@@ -133,8 +139,12 @@ class Ui_MainWindow(object):
 
         self.syncButton = QtWidgets.QPushButton(self.centralwidget)
         self.syncButton.setGeometry(QtCore.QRect(950, 20, 100, 30))
-        self.syncButton.clicked.connect(self.onSyncButtonClicked)
+        self.syncButton.clicked.connect(lambda _: self.onSyncButtonClicked())
         self.syncButton.setObjectName("syncButton")
+
+        self.autoSyncTimer = QtCore.QTimer()
+        self.autoSyncTimer.timeout.connect(lambda : self.onSyncButtonClicked(True))
+        self.autoSyncTimer.start(AUTO_SYNC)
 
         self.addButton = ClickableImageWidget("./images/add.png", self.showAddProdDialog, self.centralwidget)
         self.addButton.setGeometry(QtCore.QRect(910, 20, 30, 30))

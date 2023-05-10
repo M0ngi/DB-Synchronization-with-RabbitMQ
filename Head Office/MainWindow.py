@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore, QtGui, QtWidgets
 from rabbitmq import RabbitMQConnection
-from consts import COLUMNS, HIDDEN_COLS, SPECIAL_COLS, BRANCH_OFFICES
+from consts import COLUMNS, HIDDEN_COLS, SPECIAL_COLS, BRANCH_OFFICES, AUTO_SYNC
 from models import Product
 from ProductTableWidget import ProductTableWidget
 from sqlalchemy.orm import Session
@@ -21,7 +21,7 @@ class Ui_MainWindow(object):
         # __init__
     
 
-    def handleSyncButtonClick(self):
+    def handleSyncButtonClick(self, auto=False):
         confirmed = {}
         errorDetected = False
         try:
@@ -42,11 +42,14 @@ class Ui_MainWindow(object):
                         errorDetected = True
                         self.connection.consumer.sendNack(method.delivery_tag)
 
-                        errorDiag = QtWidgets.QMessageBox()
-                        errorDiag.setIcon(QtWidgets.QMessageBox.Icon.Critical)
-                        errorDiag.setText(f"Unable to save product in db.\nSource: {office}.\nData: {body}")
-                        errorDiag.setWindowTitle("Error!")
-                        errorDiag.exec_()
+                        if not auto:
+                            errorDiag = QtWidgets.QMessageBox()
+                            errorDiag.setIcon(QtWidgets.QMessageBox.Icon.Critical)
+                            errorDiag.setText(f"Unable to save product in db.\nSource: {office}.\nData: {body}")
+                            errorDiag.setWindowTitle("Error!")
+                            errorDiag.exec_()
+                        else:
+                            print(f"[!] Unable to save product in db.\nSource: {office}.\nData: {body}")
                         break
 
                     confirmed[office] += 1
@@ -59,11 +62,15 @@ class Ui_MainWindow(object):
                     total += value
                     msg += f"\n    {key}: {value} changes."
                 msg = msg.format(total)
-                infoDiag = QtWidgets.QMessageBox()
-                infoDiag.setIcon(QtWidgets.QMessageBox.Icon.Information)
-                infoDiag.setText(msg)
-                infoDiag.setWindowTitle("Success!")
-                infoDiag.exec_()
+
+                if not auto:
+                    infoDiag = QtWidgets.QMessageBox()
+                    infoDiag.setIcon(QtWidgets.QMessageBox.Icon.Information)
+                    infoDiag.setText(msg)
+                    infoDiag.setWindowTitle("Success!")
+                    infoDiag.exec_()
+                else:
+                    print(f"[+] {msg}")
         except Exception as e:
             total = 0
             msg = "Synced {0} changes.\nDetails:"
@@ -73,11 +80,15 @@ class Ui_MainWindow(object):
             msg = msg.format(total)
 
             print("Error1:", e)
-            errorDiag = QtWidgets.QMessageBox()
-            errorDiag.setIcon(QtWidgets.QMessageBox.Icon.Critical)
-            errorDiag.setText(f"Unable to get data.\n{msg}")
-            errorDiag.setWindowTitle("Error!")
-            errorDiag.exec_()
+
+            if not auto:
+                errorDiag = QtWidgets.QMessageBox()
+                errorDiag.setIcon(QtWidgets.QMessageBox.Icon.Critical)
+                errorDiag.setText(f"Unable to get data.\n{msg}")
+                errorDiag.setWindowTitle("Error!")
+                errorDiag.exec_()
+            else:
+                print(f"[!] Unable to get data.\n{msg}")
         finally:
             self.connection.disconnect()
             self.reloadTableRows()
@@ -174,8 +185,12 @@ class Ui_MainWindow(object):
 
         self.syncButton = QtWidgets.QPushButton(self.centralwidget)
         self.syncButton.setGeometry(QtCore.QRect(950, 20, 100, 30))
-        self.syncButton.clicked.connect(self.handleSyncButtonClick)
+        self.syncButton.clicked.connect(lambda _: self.handleSyncButtonClick())
         self.syncButton.setObjectName("syncButton")
+
+        self.autoSyncTimer = QtCore.QTimer()
+        self.autoSyncTimer.timeout.connect(lambda : self.handleSyncButtonClick(True))
+        self.autoSyncTimer.start(AUTO_SYNC)
 
         self.addButton = ClickableImageWidget("./images/add.png", self.showAddProdDialog, self.centralwidget)
         self.addButton.setGeometry(QtCore.QRect(910, 20, 30, 30))

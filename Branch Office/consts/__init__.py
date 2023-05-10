@@ -16,3 +16,5 @@ SPECIAL_COLS = [
 HIDDEN_COLS = [
     'id',
 ]
+
+AUTO_SYNC = 10*1000 # 10 seconds
