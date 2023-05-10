@@ -5,6 +5,13 @@ import json
 
 
 def handleCreateAction(product: dict, session: Session):
+    prod = session.query(Product)\
+        .filter(and_(Product.source == product['source'], Product.sourceId == product['id']))\
+        .first()
+    
+    if prod is not None:
+        return
+    
     prod: Product = Product()
     prod.fromJson(product)
     session.add(prod)
